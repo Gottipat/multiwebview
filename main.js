@@ -1,5 +1,4 @@
-const { app, BrowserWindow, shell } = require('electron')
-const path = require('path')
+const { app, BrowserWindow, session } = require('electron')
 
 function createWindow () {
   const win = new BrowserWindow({
@@ -7,14 +6,13 @@ function createWindow () {
     height: 900,
     webPreferences: {
       webviewTag: true,
-      contextIsolation: true
+      nodeIntegration: true,
+      contextIsolation: false,
+      webSecurity: false
     }
   })
 
   win.loadFile('index.html')
-
-  // Open external links in default browser if needed, but the webview 
-  // embedded inside the app should just load normally.
 }
 
 app.whenReady().then(() => {

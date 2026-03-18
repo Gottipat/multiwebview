@@ -58,6 +58,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // URL or Search Load logic
+        const isElectron = navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
+        const webviewEl = clone.querySelector('.panel-webview');
+        const placeholder = clone.querySelector('.placeholder-message');
+
         const loadUrl = () => {
             let input = urlInput.value.trim();
             if (!input) return;
@@ -75,62 +79,47 @@ document.addEventListener('DOMContentLoaded', () => {
                     url = 'https://' + url;
                 }
             } else {
-                // If it's just words, treat it as a Google search
                 url = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
             }
 
             urlInput.value = url;
 
-            // Use webview for Electron, fallback to iframe if run in a normal browser
-            const isElectron = navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
-            
-            let existingElement = contentArea.querySelector(isElectron ? 'webview' : 'iframe');
+            if (isElectron && webviewEl) {
+                // Use the pre-built webview from the template
+                placeholder.style.display = 'none';
+                webviewEl.style.display = 'block';
+                webviewEl.src = url;
 
-            if (!existingElement) {
-                // If the element doesn't exist yet, clean up generic iframe/webviews from before
-                const anyElement = contentArea.querySelector('iframe') || contentArea.querySelector('webview');
-                if (anyElement) anyElement.remove();
-
-                existingElement = document.createElement(isElectron ? 'webview' : 'iframe');
-                existingElement.style.width = '100%';
-                existingElement.style.height = '100%';
-                existingElement.style.border = 'none';
-                existingElement.style.position = 'absolute';
-                existingElement.style.top = '0';
-                existingElement.style.left = '0';
-                existingElement.style.zIndex = '2';
-                
-                if (isElectron) {
-                    existingElement.setAttribute('allowpopups', '');
-                    contentArea.appendChild(existingElement);
-                    
-                    // Hook up Navigation Events
-                    backBtn.addEventListener('click', () => { if (existingElement.canGoBack()) existingElement.goBack(); });
-                    forwardBtn.addEventListener('click', () => { if (existingElement.canGoForward()) existingElement.goForward(); });
-                    refreshBtn.addEventListener('click', () => { existingElement.reload(); });
-                    
-                    // Update State dynamically
-                    const updateNavState = () => {
-                        backBtn.disabled = !existingElement.canGoBack();
-                        forwardBtn.disabled = !existingElement.canGoForward();
-                        urlInput.value = existingElement.getURL();
-                    };
-                    
-                    existingElement.addEventListener('did-navigate', updateNavState);
-                    existingElement.addEventListener('did-navigate-in-page', updateNavState);
-
-                } else {
-                    existingElement.sandbox = "allow-same-origin allow-scripts allow-forms allow-popups";
-                    contentArea.appendChild(existingElement);
-                    
-                    // Fallback refresh for iframes
-                    refreshBtn.addEventListener('click', () => { existingElement.src = existingElement.src; });
+                // Hook up nav buttons on first load only
+                if (!webviewEl.dataset.initialized) {
+                    webviewEl.dataset.initialized = 'true';
+                    backBtn.addEventListener('click', () => { if (webviewEl.canGoBack()) webviewEl.goBack(); });
+                    forwardBtn.addEventListener('click', () => { if (webviewEl.canGoForward()) webviewEl.goForward(); });
+                    refreshBtn.addEventListener('click', () => webviewEl.reload());
+                    webviewEl.addEventListener('did-navigate', () => {
+                        backBtn.disabled = !webviewEl.canGoBack();
+                        forwardBtn.disabled = !webviewEl.canGoForward();
+                        urlInput.value = webviewEl.getURL();
+                    });
+                    webviewEl.addEventListener('did-navigate-in-page', () => {
+                        backBtn.disabled = !webviewEl.canGoBack();
+                        forwardBtn.disabled = !webviewEl.canGoForward();
+                        urlInput.value = webviewEl.getURL();
+                    });
                 }
+            } else {
+                // Fallback: use iframe for non-Electron environments
+                let iframe = contentArea.querySelector('iframe');
+                if (!iframe) {
+                    iframe = document.createElement('iframe');
+                    iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none;';
+                    iframe.sandbox = "allow-same-origin allow-scripts allow-forms allow-popups";
+                    placeholder.style.display = 'none';
+                    contentArea.appendChild(iframe);
+                    refreshBtn.addEventListener('click', () => { iframe.src = iframe.src; });
+                }
+                iframe.src = url;
             }
-            
-            // Set URL
-            existingElement.src = url;
-            
         };
 
         goBtn.addEventListener('click', loadUrl);

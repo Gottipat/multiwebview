@@ -54,9 +54,8 @@
             <div class="panel-content">
                 <div class="placeholder-message">
                     <p>Enter a URL to load.</p>
-                    <small>Note: Some websites block being loaded in a split screen (iframe).</small>
                 </div>
-                <!-- Iframe injected here -->
+                <webview class="panel-webview" src="about:blank" allowpopups webpreferences="contextIsolation=false, webSecurity=false" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;display:none;"></webview>
             </div>
         </div>
     </template>
